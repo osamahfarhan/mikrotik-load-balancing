@@ -40,7 +40,7 @@
 :do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" name=DAMGPPP;} on-error={};
 :do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" include=DAMGPPP name=DMGWAN;} on-error={};
 :do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" name=DMGLAN;} on-error={};
-:do {/interface list member add interface=$OutName comment="Eng-Osamah-AutoLoadBalancing" list=DMGLAN;} on-error={};
+:do {/interface list member add interface=$OutNameB comment="Eng-Osamah-AutoLoadBalancing" list=DMGLAN;} on-error={};
 :local ARR [:toarray ""];:local Total 0;:local Min 10000;:local Max 0;:local i 0;:local ALLPPP;:local ALLETH;
 :foreach N,V in=$InNames do={
     :if ($N=$OutNameI||$N=$OutNameB) do={:set ($InNames->$N);} else={
