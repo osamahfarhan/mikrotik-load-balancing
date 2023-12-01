@@ -1,13 +1,14 @@
-{
 #----------- الخطوط بردج 
 #----------- اصدار الميكروتيك V6
 #----------- اكتب سرعة الخطوط فقط
 #----------- 2,2,4,4,8,8 امسح الارقام واكتب سرعة الخط مع فاصلة مثل كذا
-:local PPP (2,2,4,4,8,8);
 #----------- اكتب منفذ خروج النت 
-:local OutName ("ether10");
 #----------- بعد تنفيذ الاسكربت ادخل على خطوط البردج 
 #----------- وغير اسم الامستخدم وكلمة السر حق الخطوط
+#---------انسح من بداية القوس الى النهاية 
+{
+:local PPP (2,2,4,4,8,8);
+:local OutName ("ether10");
 #---------------------------
 :if ([:len [/interface bridge port find where interface=$OutName]]>0) do={:set $OutName [/interface bridge port get ([find where interface=$OutName]->0) bridge];} 
 :do {/interface list add comment="Eng-Osamah" name=DMGLAN;} on-error={};
