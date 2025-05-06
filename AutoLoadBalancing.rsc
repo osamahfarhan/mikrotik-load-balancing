@@ -1,4 +1,3 @@
-
 :do {
 :global InNames [:toarray ""];[/terminal style varname-local;];
 :global InputErrorDo do={:if ([$1 $2 $3  i=$i]) do={/terminal style error;:do {/terminal style error;:put [$4 $2 i=$i];/terminal style escaped;:set $2 [/terminal ask value-name=[$3 $2 i=$i]];} while=([$1 $2 $3 $4 i=$i]);/terminal style escaped;};:return $2;}
@@ -47,7 +46,7 @@
 :do {/interface list member add interface=$OutNameB comment="Eng-Osamah-AutoLoadBalancing" list=DMGLAN;} on-error={};
 :global ARR [:toarray ""];:global Total 0;:global Min 10000;:global Max 0;:global i 0;:global ALLPPP;:global ALLETH;
 :foreach N,V in=$InNames do={
-    :if ([:len [/interface find where name=$N]]=0) do={:error (" No interface Named=$N");:quit;}
+    :if ([:len [/interface find where name=$N]]=0) do={:error (" No interface Named=$N");};
     :if ($N=$OutNameI||$N=$OutNameB) do={:set ($InNames->$N);} else={
         :set $i ($i+1);
         :if (([:len ($V->("username"))]>0)&&([:len ($V->("username"))]>0)) do={
@@ -72,7 +71,7 @@
             } else={:set ($InNames->$N);:set $i ($i-1);};
         }
     }
-}
+};
 :global ALLOUT ($ALLETH,$ALLPPP);:global LINES ([:len $ALLOUT]);:set $i 0;
 :foreach N,V in=$InNames do={:local j ($V->("speed"));:if ($j=0) do={:error ("not correct speed");};:set $Total ($Total+$j);:if ($j<$Min) do={:set $Min $j;};:if ($j>$Max) do={:set $Max $j;};};
 :if ($Total=0 || $Min=0 || $Max=0) do={:error "not correct number";} 
@@ -81,7 +80,7 @@
 :do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=DMGWAN comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
 :do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=("pppoe-out") comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
 :set $i 0;
-/ip firewall mangle add action=accept chain=prerouting hotspot=!auth,from-client comment="Eng-Osamah-AutoLoadBalancing";
+/ip firewall mangle add action=accept chain=prerouting hotspot=!auth,from-client protocol=tcp port=80,443,8080 comment="Eng-Osamah-AutoLoadBalancing";
 /ip firewall mangle add action=accept chain=prerouting dst-address-type=local port=80,443,8080 comment="Eng-Osamah-AutoLoadBalancing";
 :foreach N,V in=$InNames do={
 :local j ($V->("speed"));:set $i ($i+1);:local n ($j/$Min);:if ($n=0) do={:set $n 1;};
