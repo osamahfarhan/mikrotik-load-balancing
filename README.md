@@ -128,7 +128,7 @@
 :for k from=1 to=$n do={/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-connection chain=prerouting connection-mark=no-mark dst-address-type=!local in-interface-list=DMGLAN new-connection-mark=("C_$i") passthrough=yes per-connection-classifier=("both-addresses-and-ports:$Con/$ConN");:set $ConN ($ConN+1);};
 :if ($LINES=$i) do={/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-connection chain=prerouting connection-mark=no-mark dst-address-type=!local in-interface-list=DMGLAN new-connection-mark=("C_$i") passthrough=yes;:set $ConN ($ConN+1);};
 /ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-routing chain=prerouting connection-mark=("C_$i") in-interface-list=DMGLAN new-routing-mark=("R_$i") passthrough=no;
-/ip route add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes gateway=($V->("R")) routing-mark=("R_$i");
+/ip route add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes gateway=($V->("R")) routing-table=("R_$i");
 };
 /ip route enable  [find where comment="Eng-Osamah-AutoLoadBalancing"];
 /ip firewall nat enable [find where comment="Eng-Osamah-AutoLoadBalancing"];
