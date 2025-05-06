@@ -81,6 +81,8 @@
 :do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=DMGWAN comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
 :do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=("pppoe-out") comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
 :set $i 0;
+/ip firewall mangle add action=accept chain=prerouting hotspot=!auth,from-client protocol=tcp port=80,443,8080 comment="Eng-Osamah-AutoLoadBalancing"
+/ip firewall mangle add action=accept chain=prerouting dst-address-type=local port=80,443,8080 comment="Eng-Osamah-AutoLoadBalancing"
 :foreach N,V in=$InNames do={
 :local j ($V->("speed"));:set $i ($i+1);:local n ($j/$Min);:if ($n=0) do={:set $n 1;};
 :for k from=1 to=$n do={/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-connection chain=prerouting connection-mark=no-mark dst-address-type=!local in-interface-list=DMGLAN new-connection-mark=("C_$i") passthrough=yes per-connection-classifier=("both-addresses-and-ports:$Con/$ConN");:set $ConN ($ConN+1);};
