@@ -1,0 +1,70 @@
+:do {
+:global InNames [:toarray ""];
+
+#PPPOE
+
+:set ($InNames->("ether1")) ({"speed"=2; "username"="USERNAME"; "password"="PASSWORE" }); 
+
+#IP
+
+:set ($InNames->("ether2")) ({"speed"=2; "ip"="192.168.10.1" }); 
+
+#output Interface
+
+:global OutName ("ether9");
+
+:global OutNameB ("$OutName");
+:global OutNameI ("$OutName");
+:if ([:len [/interface bridge port find where interface=$OutName]]>0) do={:set $OutNameB [/interface bridge port get ([find where interface=$OutName]->0) bridge];:set $OutNameI $OutName;};
+:if ([:len [/interface bridge find where name=$OutName]]>0) do={:set $OutNameI [/interface bridge port get ([find where bridge=$OutName]->0) interface];:set $OutNameB $OutName;};
+:do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" name=DAMGPPP;} on-error={};
+:do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" include=DAMGPPP name=DMGWAN;} on-error={};
+:do {/interface list add comment="Eng-Osamah-AutoLoadBalancing" name=DMGLAN;} on-error={};
+:do {/interface list member add interface=$OutNameB comment="Eng-Osamah-AutoLoadBalancing" list=DMGLAN;} on-error={};
+:global ARR [:toarray ""];:global Total 0;:global Min 10000;:global Max 0;:global i 0;:global ALLPPP;:global ALLETH;
+:foreach N,V in=$InNames do={
+:if ([:len [/interface find where name=$N]]=0) do={:error (" No interface Named=$N");};
+:if ($N=$OutNameI||$N=$OutNameB) do={:set ($InNames->$N);} else={
+:set $i ($i+1);
+:if (([:len ($V->("username"))]>0)) do={
+:do {/interface list member add interface=$N comment="Eng-Osamah-AutoLoadBalancing" list=DMGWAN;} on-error={};
+:do {/interface pppoe-client add disabled=yes interface=$N comment="Eng-Osamah-AutoLoadBalancing" keepalive-timeout=30 name=("pppoe-out-$i") user=($V->("username"))  password=($V->("password"));} on-error={};
+:do {/interface list member add interface=("pppoe-out-$i") comment="Eng-Osamah-AutoLoadBalancing" list=DAMGPPP;} on-error={};
+:set $ALLPPP ($ALLPPP,("pppoe-out-$i"));
+:set ($InNames->$N->("R")) ("pppoe-out-$i");
+} else={
+:local ip [:toip ($V->("ip"))];
+:if ([:len [:tostr $ip]]=0) do={:error ("not correct ip".($V->("ip")));};
+:local wip $ip;
+:if ((($ip)&(0.0.0.255))>(0.0.0.250)) do={:set $wip ($wip-1);} else={:set $wip ($wip+1);};
+:foreach i in=$ALLETH do={:if ($i=$wip) do={:set $wip ($wip+1);};};
+:do {/interface list member add interface=$N comment="Eng-Osamah-AutoLoadBalancing" list=DMGWAN;} on-error={ };
+:do {/ip address add interface=$N comment="Eng-Osamah-AutoLoadBalancing" address=($wip."/24");} on-error={ };
+:set $ALLETH ($ALLETH,$ip);
+:set ($InNames->$N->("R")) $ip;
+};
+};
+};
+:global ALLOUT ($ALLETH,$ALLPPP);:global LINES ([:len $ALLOUT]);:set $i 0;
+:foreach N,V in=$InNames do={:local j ($V->("speed"));:if ($j=0) do={:error ("not correct speed");};:set $Total ($Total+$j);:if ($j<$Min) do={:set $Min $j;};:if ($j>$Max) do={:set $Max $j;};};
+:if ($Total=0 || $Min=0 || $Max=0) do={:error "not correct number";} 
+:global Con (($Total/$Min));:global ConN 0;
+:do {/ip route add disabled=yes gateway=$ALLOUT comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
+:do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=DMGWAN comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
+:do {/ip firewall nat add action=masquerade disabled=yes chain=srcnat out-interface-list=("pppoe-out") comment="Eng-Osamah-AutoLoadBalancing";} on-error={};
+:set $i 0;
+/ip firewall mangle add action=accept chain=prerouting hotspot=!auth,from-client protocol=tcp port=80,443,8080 comment="Eng-Osamah-AutoLoadBalancing";
+/ip firewall mangle add action=accept chain=prerouting dst-address-type=local  hotspot=from-client comment="Eng-Osamah-AutoLoadBalancing";
+:foreach N,V in=$InNames do={
+:local j ($V->("speed"));:set $i ($i+1);:local n ($j/$Min);:if ($n=0) do={:set $n 1;};
+:for k from=1 to=$n do={/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-connection chain=prerouting connection-mark=no-mark dst-address-type=!local in-interface-list=DMGLAN new-connection-mark=("C_$i") passthrough=yes per-connection-classifier=("both-addresses-and-ports:$Con/$ConN");:set $ConN ($ConN+1);};
+:if ($LINES=$i) do={/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-connection chain=prerouting connection-mark=no-mark dst-address-type=!local in-interface-list=DMGLAN new-connection-mark=("C_$i") passthrough=yes;:set $ConN ($ConN+1);};
+/ip firewall mangle add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes action=mark-routing chain=prerouting connection-mark=("C_$i") in-interface-list=DMGLAN new-routing-mark=("R_$i") passthrough=no;
+/ip route add comment="Eng-Osamah-AutoLoadBalancing" disabled=yes gateway=($V->("R")) routing-mark=("R_$i"); 
+};
+/ip route enable  [find where comment="Eng-Osamah-AutoLoadBalancing"];
+/ip firewall nat enable [find where comment="Eng-Osamah-AutoLoadBalancing"];
+/ip firewall mangle enable [find where comment="Eng-Osamah-AutoLoadBalancing"];
+/ip address enable [find where comment="Eng-Osamah-AutoLoadBalancing"];
+/interface pppoe-client enable [find where comment="Eng-Osamah-AutoLoadBalancing"];
+};
